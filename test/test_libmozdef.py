@@ -1,6 +1,7 @@
 import unittest
 from libmozdef import MozDefMessage
 from libmozdef.pathway import Stdout
+from libmozdef.pathway import Logging
 from libmozdef.validate import MozDefValidator
 from libmozdef.validate import MozDefExampleValidator
 
@@ -54,16 +55,27 @@ class TestLibMozdef(unittest.TestCase):
 
     def test_send_stdout(self):
         # The Stdout pathway prints the message to stdout
-        destination = Stdout()
+        pathway = Stdout()
         # Send the message
-        self.message.send(destination=destination)
+        self.message.send(pathway=pathway)
 
         # The Stdout pathway can accept a prefix argument as an illustration
         # of how pathways can take arguments
-        destination = Stdout(prefix='Here is my message')
+        pathway = Stdout(prefix='Here is my message')
         # Send the message
-        self.message.send(destination=destination)
+        self.message.send(pathway=pathway)
 
+    def test_send_logging(self):
+        import logging
+        logging.basicConfig(level=logging.ERROR)
+
+        pathway = Logging(log_level=logging.ERROR)
+        # This will produce a log output
+        self.message.send(pathway=pathway)
+
+        pathway = Logging(log_level=logging.INFO)
+        # This will not produce a log output
+        self.message.send(pathway=pathway)
 
 if __name__ == '__main__':
     unittest.main()
