@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import logging
 try:
     import boto3
     import botocore.exceptions
@@ -20,6 +21,17 @@ class Stdout(object):
         if self.prefix:
             print(self.prefix)
         print(json.dumps(message, indent=4))
+
+
+class Logging(object):
+    def __init__(self, log_level=logging.INFO):
+        self.logger = logging.getLogger(__name__)
+        self.log_level = log_level
+
+    def send(self, message):
+        message = json.dumps(message)
+        logging.log(self.log_level, message)
+        return True
 
 
 class AWSMessagingService(object):
