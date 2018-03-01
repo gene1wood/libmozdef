@@ -4,7 +4,9 @@ import socket
 import os
 import sys
 from datetime import datetime
-from libmozdef.pathway import Stdout
+import logging
+from libmozdef.pathway import Logging
+from libmozdef.validate import MozDefValidator
 
 MESSAGE_FIELDS = [
     'source',
@@ -41,6 +43,20 @@ class MozDefMessage(dict):
                  timestamp=None,
                  utctimestamp=None
                  ):
+        """MozDev message object constructor
+
+        :param summary:
+        :param source:
+        :param hostname:
+        :param severity:
+        :param category:
+        :param processid:
+        :param processname:
+        :param tags:
+        :param details:
+        :param timestamp:
+        :param utctimestamp:
+        """
         super(MozDefMessage, self).__init__()
 
         if details is None:
@@ -80,11 +96,17 @@ class MozDefMessage(dict):
             if locals()[field] is not None:
                 self[field] = locals()[field]
 
-    def send(self, destination=Stdout()):
-        """Send the message to MozDef via the `destination` objects send
-        method.
+    def send(self, pathway=None, validator=None):
+        """Send the message to MozDef via the `pathway` object's send
+        method after validating with the `validator`'s `validate` method.
 
-        :param destination:
-        :return:
+        :param pathway: A pathway object with a send method
+        :param validator: A validator object with a validate method
+        :return: The
         """
-        return destination.send(self)
+        if pathway is None:
+            pathway = Logging(log_level=logging.WARNING)
+        if validator is None:
+            validator = MozDefValidator(self.message)
+        validator.validate()
+        return pathway.send(self)
