@@ -107,6 +107,6 @@ class MozDefMessage(dict):
         if pathway is None:
             pathway = Logging(log_level=logging.WARNING)
         if validator is None:
-            validator = MozDefValidator(self.message)
+            validator = MozDefValidator(self)
         validator.validate()
         return pathway.send(self)
