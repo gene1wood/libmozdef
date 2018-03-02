@@ -113,7 +113,8 @@ class HTTP(object):
     def __init__(self,
                  url,
                  verify_cert=True,
-                 block_on_response=False):
+                 block_on_response=False,
+                 buffer_size=1):
         try:
             self.session = FuturesSession()
         except TypeError:
@@ -123,15 +124,69 @@ class HTTP(object):
         self.session.trust_env = False
         self.session.verify = verify_cert
         self.block_on_response = block_on_response
+        self.buffer_size = buffer_size
+        self.message_buffer = []
 
-    def send(self, message):
+    def __enter__(self):
+        """Enter the HTTP runtime context
+
+        :return:
+        """
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Exit the runtime context by bulk sending the remaining messages in
+        the message_buffer
+
+        :param exception_type:
+        :param exception_value:
+        :param traceback:
+        :return:
+        """
+        if self.buffer_size > 1 and len(self.message_buffer) > 0:
+            self.bulk_send()
+
+    def bulk_send(self):
+        """Send a newline delimited list of json documents from message_buffer
+        to the MozDef _bulk/ endpoint
+
+        :return:
+        """
+        # https://github.com/mozilla/MozDef/blob/fc3d8cef43/loginput/index.py#L48
         future_response = self.session.post(
             self.url,
-            json=message)
+            data='\n'.join([json.dumps(x) for x in self.message_buffer]))
+        del self.message_buffer[:]
         if not self.block_on_response:
             return True
         result = future_response.result()
         assert result.status_code == 200, (
-                'POST to %s returned %s status code' % (self.url,
-                                                        result.status_code))
+                'POST to %s returned %s status code'
+                % (self.url, result.status_code))
         return result
+
+    def send(self, message):
+        """Send message to url or if buffer_size is set, buffer messages until
+        the buffer exceeds the buffer_size and then flush them by calling
+        bulk_send
+
+        :param message:
+        :return:
+        """
+        if self.buffer_size > 1:
+            self.message_buffer.append(message)
+            if len(self.message_buffer) > self.buffer_size:
+                return self.bulk_send()
+            else:
+                return 'Message buffered'
+        else:
+            future_response = self.session.post(
+                self.url,
+                json=message)
+            if not self.block_on_response:
+                return True
+            result = future_response.result()
+            assert result.status_code == 200, (
+                    'POST to %s returned %s status code' % (self.url,
+                                                            result.status_code))
+            return result
